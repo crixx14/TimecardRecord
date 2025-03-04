@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timecard Calculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div class="max-w-3xl w-full bg-white p-6 rounded-lg shadow-lg overflow-x-auto">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">Timecard Calculator</h2>
+        <div class="mb-4">
+            <label class="font-semibold text-gray-700">Student Name:</label>
+            <input type="text" id="studentName" class="w-full p-2 border border-gray-300 rounded">
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse border border-gray-200 text-sm md:text-base">
+                <thead>
+                    <tr class="bg-blue-600 text-white">
+                        <th class="p-3 border">Date</th>
+                        <th class="p-3 border">Time In</th>
+                        <th class="p-3 border">Time Out</th>
+                        <th class="p-3 border">Total Hours</th>
+                        <th class="p-3 border">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="timecardBody"></tbody>
+            </table>
+        </div>
+        <div class="mt-4 text-lg font-semibold">All Total Hours: <span id="allTotalHours" class="text-blue-600">0</span></div>
+        <div class="mt-4 flex flex-col md:flex-row justify-end space-y-2 md:space-y-0 md:space-x-2">
+            <button onclick="addRow()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Add Entry</button>
+            <button onclick="downloadPDF()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Download PDF</button>
+        </div>
+    </div>
+    
+    <script>
+        function addRow() {
+            let table = document.getElementById('timecardBody');
+            let row = table.insertRow();
+            row.innerHTML = `
+                <td class="p-3 border"><input type="date" class="w-full p-2 border border-gray-300 rounded"></td>
+                <td class="p-3 border"><input type="time" value="00:00" class="w-full p-2 border border-gray-300 rounded" onchange="calculateHours(this)"></td>
+                <td class="p-3 border"><input type="time" value="00:00" class="w-full p-2 border border-gray-300 rounded" onchange="calculateHours(this)"></td>
+                <td class="p-3 border text-center"><span>0</span></td>
+                <td class="p-3 border text-center"><button onclick="deleteRow(this)" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Delete</button></td>
+            `;
+        }
+
+        function calculateHours(element) {
+            let row = element.parentElement.parentElement;
+            let timeIn = row.cells[1].querySelector('input').value;
+            let timeOut = row.cells[2].querySelector('input').value;
+            let totalCell = row.cells[3].querySelector('span');
+            
+            if (timeIn && timeOut) {
+                let start = new Date(`1970-01-01T${timeIn}:00`);
+                let end = new Date(`1970-01-01T${timeOut}:00`);
+                let diff = (end - start) / (1000 * 60 * 60);
+                totalCell.textContent = diff > 0 ? diff.toFixed(2) : '0';
+            }
+            updateTotalHours();
+        }
+
+        function deleteRow(button) {
+            let row = button.parentElement.parentElement;
+            row.remove();
+            updateTotalHours();
+        }
+
+        function updateTotalHours() {
+            let total = 0;
+            document.querySelectorAll("#timecardBody span").forEach(span => {
+                total += parseFloat(span.textContent) || 0;
+            });
+            document.getElementById("allTotalHours").textContent = total.toFixed(2);
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            let doc = new jsPDF();
+
+            let studentName = document.getElementById("studentName").value || "No Name";
+            doc.text(`Timecard Report - ${studentName}`, 20, 10);
+
+            let rows = [];
+            document.querySelectorAll("#timecardBody tr").forEach(tr => {
+                let rowData = [];
+                tr.querySelectorAll("td").forEach(td => {
+                    let input = td.querySelector("input");
+                    let span = td.querySelector("span");
+                    rowData.push(input ? input.value : (span ? span.textContent : ""));
+                });
+                rows.push(rowData);
+            });
+
+            doc.autoTable({
+                head: [["Date", "Time In", "Time Out", "Total Hours"]],
+                body: rows,
+                startY: 20
+            });
+
+            doc.text(`Total Hours: ${document.getElementById("allTotalHours").textContent}`, 20, doc.autoTable.previous.finalY + 10);
+            doc.save("timecard.pdf");
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+</body>
+</html>
